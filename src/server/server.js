@@ -1,5 +1,5 @@
-require('esbuild-register/dist/node').register();
-require('ignore-styles').default(['.css', '.scss', '.sass']);
+// require('esbuild-register/dist/node').register();
+// require('ignore-styles').default(['.css', '.scss', '.sass']);
 require('dotenv').config();
 
 

@@ -4,7 +4,7 @@ const { StaticRouter } = require("react-router-dom");
 const { renderToPipeableStream } = require("react-dom/server");
 const Resolver = require("./resolver");
 const { getMetaData } = require("./headers.html.js");
-const redis = require("./redis.js");
+const path = require("path")
 
 // --- Meta Data ---
 const pageMetaData = {
@@ -33,7 +33,7 @@ const pageMetaData = {
     url: "https://www.famoustech.xyz/contact",
   },
   "/portfolio": {
-    title: "Portfolio de  FAMOUS-TECH",
+    title: "Portfolio de FAMOUS-TECH",
     description:
       "Découvrez nos réalisations et projets en développement web et mobile.",
     url: "https://www.famoustech.xyz/portfolio",
@@ -45,61 +45,32 @@ const getPageMeta = (path) => {
   return pageMetaData[cleanPath] || pageMetaData["/"];
 };
 
-// --- Redis cache helper ---
-async function SetCache(url, cachekey, fullHTML) {
-  try {
-    await redis.setEx(cachekey, 60 * 60 * 24, fullHTML); // 1 jour
-    console.log(`CACHE SET SUCCESSFULLY for route : ${url}`);
-  } catch (error) {
-    console.warn(
-      `WARNING, Cache wasn't set correctly, got error : ${error}`
-    );
-  }
-}
-
 class Renderer {
   constructor(url, res, method) {
     this.url = url;
     this.res = res;
-    this.method = method
+    this.method = method;
+    this.resolver = new Resolver();
   }
 
-  
-  async renderPage(method){
-    if (!method){
-      throw new Error("method is required, make sure to use the method parameter while calling the Renderer Method ")
+  async renderPage(method) {
+    if (!method) {
+      throw new Error(
+        "method is required, make sure to use the method parameter while calling the Renderer Method"
+      );
     }
-    if (method.match("stream")){
-      await this._renderToStream(this.url, this.res)
-    }
-    else if(method.match("string")) {
-      await this._renderToString(this.url)
+    if (method.match("stream")) {
+      await this._renderToStream(this.url, this.res);
+    } else if (method.match("string")) {
+      await this._renderToString(this.url);
     }
   }
 
-
-  /*
-  The _getPageKey function is designed for a development use only
-  You will have to edit this for each new page
-  NOTICE : it's only used in the renderToPieapableStream method,
-  as each pages will have their one JavaScript file after the build process
-
-  */
-  async _getPageKey(url){
-    const keys = {
-      "/": "../pages/Home.tsx",
-      "/contact": "../pages/Contact.tsx",
-      "/projects": "../pages/Projects.tsx",
-      "/services": "../pages/Services.tsx",
-      "/about": "../pages/About.tsx"
-    }
-    // console.log(url)
-    return keys[url] || null;
-  }
   async _loadApp() {
-    
-    const mod = await import("../../../dist/server/entry-server.mjs"); // This might possibly change depending on your project structure
-    return mod.default; 
+    const mod = await import(
+      path.resolve(process.cwd(), "dist/server/entry-server.mjs")
+    );
+    return mod.default || mod.render || mod;
   }
 
   /* WARNING :
@@ -109,21 +80,13 @@ class Renderer {
     for compatibility & Performance.
     Feel free to change the "method" parameter in `src/server/routes/ssr.js`
     As FSX uses renderToPipeableStream by default, we highly recommend to use it
-    Because _renderToString may not work as excepted
+    Because _renderToString may not work as expected
   */
   async _renderToString(url) {
     try {
       const context = {};
-      const cachekey = `SSR:${url}`;
-      const assets = new Resolver();
-      const cssFile = await assets.getCSS();
-      const jsFile = await assets.getSingleBundle(); 
-      const cachedHTML = await redis.get(cachekey);
-
-      if (cachedHTML) {
-        console.log(`Used cache for ${url}`);
-        return cachedHTML;
-      }
+      const cssFile = await this.resolver.getCSS();
+      const jsFile = await this.resolver.getSingleBundle();
 
       const EntryServer = await this._loadApp();
 
@@ -155,8 +118,6 @@ class Renderer {
       </html>
       `;
 
-      await SetCache(url, cachekey, fullHTML);
-
       return fullHTML;
     } catch (error) {
       console.error("Error rendering the page", error);
@@ -166,7 +127,7 @@ class Renderer {
         <head>
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>Error- FSX RENDERING FAILED</title>
+          <title>Error - FSX RENDERING FAILED</title>
         </head>
         <body>
           <div id="root">
@@ -182,18 +143,26 @@ class Renderer {
   async _renderToStream(url, res) {
     try {
       const context = {};
-      let pageKey = await this._getPageKey(url)
-      const assets = new Resolver();
-      const pageMeta = getPageMeta(url);
-      const cssFile = await assets.getCSS();
-      const jsFiles = await assets.getChunksPerPage(pageKey);
+      // Auto-discover page key from manifest
+      const pageKey = await this.resolver._getPageKey(url);
       
+      if (!pageKey) {
+        console.error(`No page found for URL: ${url}`);
+        return res.status(404).send("Page not found");
+      }
+
+      const pageMeta = getPageMeta(url);
+      const cssFile = await this.resolver.getCSS();
+      const jsFiles = await this.resolver.getChunksPerPage(pageKey);
+
       if (!jsFiles) {
         console.error(`No JS files found for page key: ${pageKey}`);
-        return res.status(404).send('Page not found');
+        return res.status(404).send("Page not found");
       }
-      
-      const scriptFiles = [...jsFiles].map(f => `<script type="module" src="/dist/${f}" defer></script>`).join("\n")
+
+      const scriptFiles = [...jsFiles]
+        .map((f) => `<script type="module" src="/dist/${f}" defer></script>`)
+        .join("\n");
 
       const EntryServer = await this._loadApp();
 
@@ -226,17 +195,17 @@ class Renderer {
             res.end();
           },
           onError(error) {
-            console.error('Streaming error:', error);
+            console.error("Streaming error:", error);
             if (!res.headersSent) {
-              res.status(500).send('Internal Server Error');
+              res.status(500).send("Internal Server Error");
             }
-          }
+          },
         }
       );
     } catch (error) {
       console.error(`ERROR WHILE STREAMING THE PAGE : ${error}`);
       if (!res.headersSent) {
-        res.status(500).send('Internal Server Error');
+        res.status(500).send("Internal Server Error");
       }
     }
   }

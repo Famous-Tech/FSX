@@ -88,7 +88,7 @@ async function redisImageCache(req, res, next) {
   }
 }
 
-// Appliquer le cache Redis avant de servir les images
+
 app.use('/images', redisImageCache);
 app.use('/favicons', redisImageCache);
 
@@ -101,7 +101,6 @@ app.use('/images', express.static(path.join(__dirname, '../images'), cacheOption
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Autres fichiers statiques
 app.use(express.static('/www'));
 app.use(express.static('public'));
 app.use('/dist', express.static(path.join(__dirname, '../../../dist/client'), { ...cacheOptions, setHeaders: setStaticHeaders }));

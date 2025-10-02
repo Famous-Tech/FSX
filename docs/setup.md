@@ -147,7 +147,6 @@ There are rhe steps to use FSX
 ### Additional infos : 
 
 - Change the custom SEO Metadatas for each routes at `src/server/utils/renderer.js` and `src/server/utils/headers.html.js`
-- Edit the {keys} at `src/server/utils/renderer.js` (The aync _getPageKey function in the Renderer class)
 - Read the code. test it, and edit what doesn't fit to you bcs it's not mine, not my communuty's, but **OUR** code.
 
 You liked it ? Why not star this Repo ?
