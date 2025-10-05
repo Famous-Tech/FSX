@@ -1,9 +1,9 @@
-const express = require('express');
-const errorHandler = require('../middleware/errorHandler');
-const path = require('path');
-const compression = require('compression');
-const helmet = require('helmet');
-const redis = require('../utils/redis'); 
+import express from 'express';
+import errorHandler from '../middleware/errorHandler.js';
+import path from 'path';
+import compression from 'compression';
+import helmet from 'helmet';
+import redis from '../utils/redis.js'; 
 
 
 let cacheOptions = {
@@ -12,6 +12,13 @@ let cacheOptions = {
 };
 
 const app = express();
+
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 
 function setStaticHeaders(res, filePath) {
   try {
@@ -108,4 +115,4 @@ app.use('/dist', express.static(path.join(__dirname, '../../../dist/client'), { 
 // Gestion des erreurs
 app.use(errorHandler);
 
-module.exports = app;
+export default app;

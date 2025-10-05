@@ -1,10 +1,10 @@
-const React = require("react");
-const { renderToString } = require("react-dom/server");
-const { StaticRouter } = require("react-router-dom");
-const { renderToPipeableStream } = require("react-dom/server");
-const Resolver = require("./resolver");
-const { getMetaData } = require("./headers.html.js");
-const path = require("path")
+import React from "react";
+import { renderToString } from "react-dom/server";
+import { StaticRouter } from "react-router-dom";
+import { renderToPipeableStream } from "react-dom/server";
+import Resolver from "./resolver.js";
+import { getMetaData } from "./headers.html.js";
+import path from "path";
 
 // --- Meta Data ---
 const pageMetaData = {
@@ -45,7 +45,7 @@ const getPageMeta = (path) => {
   return pageMetaData[cleanPath] || pageMetaData["/"];
 };
 
-class Renderer {
+export class Renderer {
   constructor(url, res, method) {
     this.url = url;
     this.res = res;
@@ -68,7 +68,7 @@ class Renderer {
 
   async _loadApp() {
     const mod = await import(
-      path.resolve(process.cwd(), "dist/server/entry-server.mjs")
+      path.resolve(process.cwd(), "dist/server/entry-server.js")
     );
     return mod.default || mod.render || mod;
   }
@@ -145,7 +145,7 @@ class Renderer {
       const context = {};
       // Auto-discover page key from manifest
       const pageKey = await this.resolver._getPageKey(url);
-      
+
       if (!pageKey) {
         console.error(`No page found for URL: ${url}`);
         return res.status(404).send("Page not found");
@@ -210,5 +210,3 @@ class Renderer {
     }
   }
 }
-
-module.exports = { Renderer };

@@ -1,7 +1,5 @@
-
-
-const getMetaData = (pageMeta) => {
-  const structuredData = {
+export function getMetaData(pageMeta){
+    const structuredData = {
     "@context": "https://schema.org",
     "@type": "WebPage",
     name: pageMeta.title,
@@ -102,6 +100,3 @@ const getMetaData = (pageMeta) => {
     <script type="application/ld+json">${JSON.stringify(websiteData)}</script>
   `;
 };
-module.exports = {
-    getMetaData
-}
