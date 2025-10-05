@@ -1,5 +1,5 @@
-const { readFile } = require("fs/promises");
-const path = require('path');
+import { readFile  } from 'fs/promises';
+import path from 'path'
 
 class Resolver {
   constructor() {
@@ -125,4 +125,4 @@ class Resolver {
   }
 }
 
-module.exports = Resolver;
+export default Resolver;

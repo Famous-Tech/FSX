@@ -1,4 +1,4 @@
-const { createClient } = require('redis');
+import { createClient } from 'redis';
 
 const redis = createClient({
     socket: {
@@ -23,4 +23,4 @@ redis.on('connect', () => {
     }
 })();
 
-module.exports = redis;
+export default redis;

@@ -1,8 +1,8 @@
-const express = require('express');
+import express from 'express'
 const router = express.Router();
 
-const healthRoutes = require('./health');
-const ssrRoutes = require('./ssr');
+import healthRoutes from './health.js'
+import ssrRoutes from './ssr.js'
 
 
 router.use('/health', healthRoutes);
@@ -10,4 +10,4 @@ router.use('/health', healthRoutes);
 // Catch all route for the SSR
 router.use('/', ssrRoutes);
 
-module.exports = router;
+export default router;
