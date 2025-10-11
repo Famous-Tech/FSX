@@ -46,6 +46,7 @@
     "autoprefixer": "^10.4.21",
     "babel-register": "^6.26.0",
     "esbuild-register": "^3.6.0",
+    "grunt": "^1.6.1",
     "ignore": "^7.0.5",
     "nodemon": "^3.1.10"
   }

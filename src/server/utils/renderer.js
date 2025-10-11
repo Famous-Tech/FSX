@@ -5,40 +5,8 @@ import { renderToPipeableStream } from "react-dom/server";
 import Resolver from "./resolver.js";
 import { getMetaData } from "./headers.html.js";
 import path from "path";
+import pageMetaData from "./meta.data.js"
 
-// --- Meta Data ---
-const pageMetaData = {
-  "/": {
-    title: "FAMOUS-TECH - Solutions Digitales Innovantes en Haïti",
-    description:
-      "Famous-Tech - Votre partenaire de confiance pour le développement web et mobile en Haïti. Transformez vos idées en solutions digitales.",
-    url: "https://www.famoustech.xyz",
-  },
-  "/services": {
-    title: "Nos Services - FAMOUS-TECH",
-    description:
-      "Découvrez nos services de développement web, applications mobiles, et solutions digitales sur mesure en Haïti.",
-    url: "https://www.famoustech.xyz/services",
-  },
-  "/about": {
-    title: "À Propos - FAMOUS-TECH",
-    description:
-      "Apprenez-en plus sur Famous-Tech, votre équipe de développement digital en Haïti.",
-    url: "https://www.famoustech.xyz/about",
-  },
-  "/contact": {
-    title: "Contactez-nous - FAMOUS-TECH",
-    description:
-      "Contactez Famous-Tech pour vos projets de développement web et mobile en Haïti.",
-    url: "https://www.famoustech.xyz/contact",
-  },
-  "/portfolio": {
-    title: "Portfolio de FAMOUS-TECH",
-    description:
-      "Découvrez nos réalisations et projets en développement web et mobile.",
-    url: "https://www.famoustech.xyz/portfolio",
-  },
-};
 
 const getPageMeta = (path) => {
   const cleanPath = path.split("?")[0].split("#")[0];
@@ -62,13 +30,13 @@ export class Renderer {
     if (method.match("stream")) {
       await this._renderToStream(this.url, this.res);
     } else if (method.match("string")) {
-      await this._renderToString(this.url);
+      return await this._renderToString(this.url, this.res);
     }
   }
 
   async _loadApp() {
     const mod = await import(
-      path.resolve(process.cwd(), "dist/server/entry-server.js")
+      path.resolve(process.cwd(), "dist/server/entry-server.mjs")
     );
     return mod.default || mod.render || mod;
   }
@@ -82,11 +50,29 @@ export class Renderer {
     As FSX uses renderToPipeableStream by default, we highly recommend to use it
     Because _renderToString may not work as expected
   */
-  async _renderToString(url) {
+  async _renderToString(url, res) {
     try {
       const context = {};
+      // Auto-discover page key from manifest
+      const pageKey = await this.resolver._getPageKey(url);
+      
+      if (!pageKey) {
+        console.error(`No page found for URL: ${url}`);
+        return null;
+      }
+
+      const pageMeta = getPageMeta(url);
       const cssFile = await this.resolver.getCSS();
-      const jsFile = await this.resolver.getSingleBundle();
+      const jsFiles = await this.resolver.getChunksPerPage(pageKey);
+
+      if (!jsFiles) {
+        console.error(`No JS files found for page key: ${pageKey}`);
+        return null;
+      }
+
+      const scriptFiles = [...jsFiles]
+        .map((f) => `<script type="module" src="/dist/${f}" defer></script>`)
+        .join("\n");
 
       const EntryServer = await this._loadApp();
 
@@ -100,20 +86,19 @@ export class Renderer {
 
       if (context.url) {
         console.warn(`Request was redirected to: ${context.url}`);
-        return;
+        return null;
       }
 
-      const pageMeta = getPageMeta(url);
       const fullHTML = `
       <!DOCTYPE html>
       <html lang="fr-HT">
       <head>
-        <link rel="stylesheet" href="${cssFile}">
+        <link rel="stylesheet" href="/dist/${cssFile}" />
         ${getMetaData(pageMeta)}
       </head>
       <body>
         <div id="root">${appHTML}</div>
-        <script src="${jsFile}" defer></script>
+        ${scriptFiles}
       </body>
       </html>
       `;
@@ -145,7 +130,7 @@ export class Renderer {
       const context = {};
       // Auto-discover page key from manifest
       const pageKey = await this.resolver._getPageKey(url);
-
+      
       if (!pageKey) {
         console.error(`No page found for URL: ${url}`);
         return res.status(404).send("Page not found");
